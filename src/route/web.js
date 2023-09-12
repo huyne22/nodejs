@@ -1,14 +1,21 @@
-const express = require('express')
-const router = express.Router()
-const {getHomePage, postCreateUser,getUpdatePage} = require('../controller/homeController')
+const express = require("express");
+const router = express.Router();
+const {
+  handleLogin,
+  handleCreateNewUser,
+  handleCreateNewPatient,
+  handleUpdatePatient,
+  handleGetAllPatient,
+  handleDeletePatient,
+} = require("../controller/homeController");
 // middleware that is specific to this router
 
-router.get('/', getHomePage);
-router.get('/update/:id', getUpdatePage);
+//api
+router.post("/api/login", handleLogin);
+router.post("/api/create-new-user", handleCreateNewUser);
+router.post("/api/create-patient", handleCreateNewPatient);
+router.post("/api/update-patient", handleUpdatePatient);
+router.get("/api/get-all-patient", handleGetAllPatient);
+router.post("/api/delete-patient", handleDeletePatient);
 
-router.post('/create-user',postCreateUser);
-// router.get('/getAllUser',getAllUser);
-
-
-module.exports = router
-
+module.exports = router;
