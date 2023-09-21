@@ -1,3 +1,4 @@
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
@@ -37,6 +38,8 @@ app.use(function (req, res, next) {
 app.use(express.json());
 // Sử dụng middleware express.urlencoded() để xử lý dữ liệu từ biểu mẫu HTML
 app.use(express.urlencoded({ extended: true }));
+
+app.use(cookieParser());
 
 configViewEngine(app);
 
