@@ -10,7 +10,7 @@ const {
   updateMedicalService,
   getAllMedicalService,
   deleteMedicalService,
-  refreshTokenService,
+  // refreshTokenService,
   createNewDoctor,
   updateDoctor,
   getAllDoctor,
@@ -35,6 +35,19 @@ const {
   updateMedicalExamination,
   getAllMedicalExamination,
   deleteMedicalExamination,
+  getPatientSearch,
+  getPatientApointmentSearch,
+  getMedicalExaminationSearch,
+  getDoctorScheduleSearch,
+  getPatientMedicalServiceSearch,
+  getMedicalServiceSearch,
+  getDoctorSearch,
+  getNurseSearch,
+  getMedicineSearch,
+  createNewMedicine,
+  updateMedicine,
+  getAllMedicine,
+  deleteMedicine,
 } = require("../service/CRUDService");
 const bcrypt = require("bcryptjs");
 
@@ -56,15 +69,13 @@ const handleLogin = async (req, res) => {
   console.log(userData);
   //check email tồn tại
   //so sánh password
-  let refreshToken = userData?.data?.refresh_token;
-  res.cookie("refreshToken", refreshToken, { httpOnly: true });
+  let access_token = userData?.data?.access_token;
+  res.cookie("access_token", access_token, { httpOnly: true });
   return res.status(200).json({
     errCode: userData.errCode,
     errMessage: userData.errMessage,
     data: userData?.user ? userData?.user : {},
-    access_token: userData?.data?.access_token
-      ? userData?.data?.access_token
-      : {},
+    token: userData?.data ? userData?.data : {},
   });
 };
 
@@ -161,6 +172,7 @@ const handleUpdatePatient = async (req, res) => {
 
 let handleGetAllPatient = async (req, res) => {
   let id = req.query.id;
+  console.log("check req.query", req.query);
   //ko có id
   if (!id) {
     return res.status(200).json({
@@ -170,7 +182,7 @@ let handleGetAllPatient = async (req, res) => {
     });
   }
   //có id
-  let patients = await getAllPatient(id);
+  let patients = await getAllPatient(req.query);
 
   if (patients && patients.patient && patients.patient.length > 0) {
     for (let i = 0; i < patients.patient.length; i++) {
@@ -191,6 +203,7 @@ let handleGetAllPatient = async (req, res) => {
     errCode: patients.errCode,
     errMessage: patients.errMessage,
     data: patients.patient,
+    pagination: patients?.pagination,
   });
 };
 
@@ -265,11 +278,12 @@ const handleGetAllMedicalService = async (req, res) => {
     });
   }
   //có id
-  let services = await getAllMedicalService(id);
+  let services = await getAllMedicalService(req.query);
   return res.status(200).json({
     errCode: services.errCode,
     errMessage: services.errMessage,
     data: services.service,
+    pagination: services?.pagination,
   });
 };
 
@@ -291,24 +305,24 @@ const handleDeleteMedicalService = async (req, res) => {
   });
 };
 
-const userRefreshTokenController = async (req, res) => {
-  try {
-    const refreshTolken = req.headers.token.split(" ")[1];
-    if (refreshTolken) {
-      const response = await refreshTokenService(refreshTolken);
-      return res.json(response);
-    } else {
-      return res.json({
-        message: "The refreshTolken is not valid",
-      });
-    }
-  } catch (err) {
-    return res.json({
-      status: "err",
-      message: err,
-    });
-  }
-};
+// const userRefreshTokenController = async (req, res) => {
+//   try {
+//     const refreshTolken = req.headers.token.split(" ")[1];
+//     if (refreshTolken) {
+//       const response = await refreshTokenService(refreshTolken);
+//       return res.json(response);
+//     } else {
+//       return res.json({
+//         message: "The refreshTolken is not valid",
+//       });
+//     }
+//   } catch (err) {
+//     return res.json({
+//       status: "err",
+//       message: err,
+//     });
+//   }
+// };
 
 const handleCreateDoctor = async (req, res) => {
   const {
@@ -391,12 +405,13 @@ const handleGetAllDoctor = async (req, res) => {
     });
   }
   //có id
-  let doctors = await getAllDoctor(id);
+  let doctors = await getAllDoctor(req.query);
 
   return res.status(200).json({
     errCode: doctors.errCode,
     errMessage: doctors.errMessage,
     data: doctors.doctor,
+    pagination: doctors?.pagination,
   });
 };
 
@@ -500,12 +515,13 @@ const handleGetAllNurse = async (req, res) => {
     });
   }
   //có id
-  let nurses = await getAllNurse(id);
+  let nurses = await getAllNurse(req.query);
 
   return res.status(200).json({
     errCode: nurses.errCode,
     errMessage: nurses.errMessage,
     data: nurses.nurse,
+    pagination: nurses?.pagination,
   });
 };
 
@@ -583,7 +599,7 @@ const handleGetAllDoctorSchedule = async (req, res) => {
       users: [],
     });
   }
-  let schedules = await getAllDoctorSchedule(id);
+  let schedules = await getAllDoctorSchedule(req.query);
 
   if (schedules && schedules.schedule && schedules.schedule.length > 0) {
     for (let i = 0; i < schedules.schedule.length; i++) {
@@ -605,6 +621,7 @@ const handleGetAllDoctorSchedule = async (req, res) => {
     errCode: schedules.errCode,
     errMessage: schedules.errMessage,
     data: schedules.schedule,
+    pagination: schedules?.pagination,
   });
 };
 
@@ -654,7 +671,7 @@ const handleGetAllPatientAppointment = async (req, res) => {
     });
   }
   //có id
-  let appointments = await getAllPatientAppointment(id);
+  let appointments = await getAllPatientAppointment(req.query);
 
   if (
     appointments &&
@@ -678,6 +695,7 @@ const handleGetAllPatientAppointment = async (req, res) => {
     errCode: appointments.errCode,
     errMessage: appointments.errMessage,
     data: appointments.appointment,
+    pagination: appointments?.pagination,
   });
 };
 
@@ -701,6 +719,7 @@ const handleDeletePatientAppointment = async (req, res) => {
 const handleCreatePatientMedicalService = async (req, res) => {
   console.log("check add", req.body);
   const { MaBN, MaDV, Ngay, Buoi, SoLuong, GhiChu } = req.body;
+  // const { MaBN, MaDV, Ngay, Buoi, SoLuong, GhiChu } = req.body;
   if (!MaBN || !MaDV || !Ngay || !Buoi || !SoLuong || !GhiChu) {
     return res.status(500).json({
       errCode: 1,
@@ -725,7 +744,8 @@ const handleCreatePatientMedicalService = async (req, res) => {
 const handleUpdatePatientMedicalService = async (req, res) => {
   console.log("check update", req.body);
   console.log("check update", req.body?.data);
-  const { MaBN, MaDV, Ngay, Buoi } = req.body;
+  const { MaBN, MaDV, Ngay, Buoi } = req.body.data;
+  // const { MaBN, MaDV, Ngay, Buoi } = req.body;
   // let MaBN = req.body.data.MaBN ? req.body.data.MaBN : req.body.MaBN;
   // let MaDV = req.body.data.MaDV ? req.body.data.MaDV : req.body.MaDV;
   // let Ngay = req.body.data.Ngay ? req.body.data.Ngay : req.body.Ngay;
@@ -759,7 +779,7 @@ const handleGetAllPatientMedicalService = async (req, res) => {
       users: [],
     });
   }
-  let patient_medicals = await getAllPatientMedicalService(id);
+  let patient_medicals = await getAllPatientMedicalService(req.query);
 
   if (
     patient_medicals &&
@@ -785,6 +805,7 @@ const handleGetAllPatientMedicalService = async (req, res) => {
     errCode: patient_medicals.errCode,
     errMessage: patient_medicals.errMessage,
     data: patient_medicals.patient_medical,
+    pagination: patient_medicals?.pagination,
   });
 };
 
@@ -808,8 +829,17 @@ const handleDeletePatientMedicalService = async (req, res) => {
 
 const handleCreateMedicalExamination = async (req, res) => {
   console.log("check add", req.body);
-  const { MaBS, MaBN, Ngay, Buoi, MaYTa, KetQuaChuanDoanBenh, GhiChu } =
-    req.body;
+  const {
+    MaBS,
+    MaBN,
+    Ngay,
+    Buoi,
+    MaYTa,
+    KetQuaChuanDoanBenh,
+    GhiChu,
+    MaThuoc,
+    ThanhToan,
+  } = req.body;
   if (
     !MaBS ||
     !MaBN ||
@@ -817,7 +847,9 @@ const handleCreateMedicalExamination = async (req, res) => {
     !Buoi ||
     !MaYTa ||
     !KetQuaChuanDoanBenh ||
-    !GhiChu
+    !GhiChu ||
+    !MaThuoc ||
+    !ThanhToan
   ) {
     return res.status(500).json({
       errCode: 1,
@@ -831,7 +863,9 @@ const handleCreateMedicalExamination = async (req, res) => {
       Buoi,
       MaYTa,
       KetQuaChuanDoanBenh,
-      GhiChu
+      GhiChu,
+      MaThuoc,
+      ThanhToan
     );
     return res.status(200).json({
       errCode: message?.errCode,
@@ -841,14 +875,30 @@ const handleCreateMedicalExamination = async (req, res) => {
 };
 
 const handleUpdateMedicalExamination = async (req, res) => {
-  console.log("check update", req.body);
+  // console.log("check update", req.body);
   console.log("check update", req.body?.data);
-  const { MaBS, MaBN, Ngay, Buoi, MaYTa, KetQuaChuanDoanBenh, GhiChu } =
-    req.body;
-  // let MaBS = req.body.data.MaBS ? req.body.data.MaBS : req.body.MaBS;
-  // let MaBN = req.body.data.MaBN ? req.body.data.MaBN : req.body.MaBN;
-  // let Ngay = req.body.data.Ngay ? req.body.data.Ngay : req.body.Ngay;
-  // let Buoi = req.body.data.Buoi ? req.body.data.Buoi : req.body.Buoi;
+  // const {
+  //   MaBS,
+  //   MaBN,
+  //   Ngay,
+  //   Buoi,
+  //   MaYTa,
+  //   KetQuaChuanDoanBenh,
+  //   GhiChu,
+  //   MaThuoc,
+  //   ThanhToan,
+  // } = req.body;
+  const {
+    MaBS,
+    MaBN,
+    Ngay,
+    Buoi,
+    MaYTa,
+    KetQuaChuanDoanBenh,
+    GhiChu,
+    MaThuoc,
+    ThanhToan,
+  } = req.body.data;
   if (
     !MaBS &&
     !MaBN &&
@@ -856,7 +906,9 @@ const handleUpdateMedicalExamination = async (req, res) => {
     !Buoi &&
     !MaYTa &&
     !KetQuaChuanDoanBenh &&
-    !GhiChu
+    !GhiChu &&
+    !MaThuoc &&
+    !ThanhToan
   ) {
     return res.status(500).json({
       errCode: 1,
@@ -878,6 +930,7 @@ const handleUpdateMedicalExamination = async (req, res) => {
 
 const handleGetAllMedicalExamination = async (req, res) => {
   let id = req.query.id;
+  console.log("check", req.query);
   //ko có id
   if (!id) {
     return res.status(200).json({
@@ -886,7 +939,7 @@ const handleGetAllMedicalExamination = async (req, res) => {
       users: [],
     });
   }
-  let medical_examinations = await getAllMedicalExamination(id);
+  let medical_examinations = await getAllMedicalExamination(req.query);
 
   if (
     medical_examinations &&
@@ -912,6 +965,7 @@ const handleGetAllMedicalExamination = async (req, res) => {
     errCode: medical_examinations.errCode,
     errMessage: medical_examinations.errMessage,
     data: medical_examinations.medical_examination,
+    pagination: medical_examinations?.pagination,
   });
 };
 
@@ -932,6 +986,370 @@ const handleDeleteMedicalExamination = async (req, res) => {
     errMessage: message.errMessage,
   });
 };
+
+const handlePatientSearch = async (req, res) => {
+  let SoDT = req.body.sdt;
+  // let SoDT = req.body;
+  console.log("check sdt", req.body);
+  //ko có id
+  if (!SoDT) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_patient = await getPatientSearch(SoDT);
+
+  return res.status(200).json({
+    errCode: search_patient.errCode,
+    errMessage: search_patient.errMessage,
+    data: search_patient.tamp,
+  });
+};
+
+const handlePatientApointmentSearch = async (req, res) => {
+  let ngay = req.body.ngay;
+  // let ngay = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ngay) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_patient_apointments = await getPatientApointmentSearch(ngay);
+  if (
+    search_patient_apointments &&
+    search_patient_apointments.search_patient_apointment &&
+    search_patient_apointments.search_patient_apointment.length > 0
+  ) {
+    for (
+      let i = 0;
+      i < search_patient_apointments.search_patient_apointment.length;
+      i++
+    ) {
+      let ngayGio = new Date(
+        search_patient_apointments.search_patient_apointment[i].Ngay
+      );
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      search_patient_apointments.search_patient_apointment[i].Ngay = ngayMoi;
+    }
+  }
+  return res.status(200).json({
+    errCode: search_patient_apointments.errCode,
+    errMessage: search_patient_apointments.errMessage,
+    data: search_patient_apointments.search_patient_apointment,
+  });
+};
+
+const handleMedicalExaminationSearch = async (req, res) => {
+  let ngay = req.body.ngay;
+  // let ngay = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ngay) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_medical_examinations = await getMedicalExaminationSearch(ngay);
+  if (
+    search_medical_examinations &&
+    search_medical_examinations.search_medical_examination &&
+    search_medical_examinations.search_medical_examination.length > 0
+  ) {
+    for (
+      let i = 0;
+      i < search_medical_examinations.search_medical_examination.length;
+      i++
+    ) {
+      let ngayGio = new Date(
+        search_medical_examinations.search_medical_examination[i].Ngay
+      );
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      search_medical_examinations.search_medical_examination[i].Ngay = ngayMoi;
+    }
+  }
+  return res.status(200).json({
+    errCode: search_medical_examinations.errCode,
+    errMessage: search_medical_examinations.errMessage,
+    data: search_medical_examinations.search_medical_examination,
+  });
+};
+
+const handleDoctorScheduleSearch = async (req, res) => {
+  let ngay = req.body.ngay;
+  // let ngay = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ngay) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_doctor_schedules = await getDoctorScheduleSearch(ngay);
+  if (
+    search_doctor_schedules &&
+    search_doctor_schedules.search_doctor_schedule &&
+    search_doctor_schedules.search_doctor_schedule.length > 0
+  ) {
+    for (
+      let i = 0;
+      i < search_doctor_schedules.search_doctor_schedule.length;
+      i++
+    ) {
+      let ngayGio = new Date(
+        search_doctor_schedules.search_doctor_schedule[i].Ngay
+      );
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      search_doctor_schedules.search_doctor_schedule[i].Ngay = ngayMoi;
+    }
+  }
+  return res.status(200).json({
+    errCode: search_doctor_schedules.errCode,
+    errMessage: search_doctor_schedules.errMessage,
+    data: search_doctor_schedules.search_doctor_schedule,
+  });
+};
+
+const handlePatientMedicalServiceSearch = async (req, res) => {
+  let ngay = req.body.ngay;
+  // let ngay = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ngay) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_patient_medical_services = await getPatientMedicalServiceSearch(
+    ngay
+  );
+  if (
+    search_patient_medical_services &&
+    search_patient_medical_services.search_patient_medical_service &&
+    search_patient_medical_services.search_patient_medical_service.length > 0
+  ) {
+    for (
+      let i = 0;
+      i < search_patient_medical_services.search_patient_medical_service.length;
+      i++
+    ) {
+      let ngayGio = new Date(
+        search_patient_medical_services.search_patient_medical_service[i].Ngay
+      );
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      search_patient_medical_services.search_patient_medical_service[i].Ngay =
+        ngayMoi;
+    }
+  }
+  return res.status(200).json({
+    errCode: search_patient_medical_services.errCode,
+    errMessage: search_patient_medical_services.errMessage,
+    data: search_patient_medical_services.search_patient_medical_service,
+  });
+};
+const handleCreateMedicine = async (req, res) => {
+  console.log("check add", req.body);
+  const { MaThuoc, TenThuoc, CongDung, DonVi, SoLuong, GhiChu } = req.body;
+  if (!MaThuoc || !TenThuoc || !CongDung || !DonVi || !SoLuong || !GhiChu) {
+    return res.status(500).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  } else {
+    let message = await createNewMedicine(
+      MaThuoc,
+      TenThuoc,
+      CongDung,
+      DonVi,
+      SoLuong,
+      GhiChu
+    );
+    return res.status(200).json({
+      errCode: message?.errCode,
+      errMessage: message?.errMessage,
+    });
+  }
+};
+
+const handleUpdateMedicine = async (req, res) => {
+  console.log("check update", req.body);
+  console.log("check update", req.body?.data);
+  // const { MaThuoc, TenThuoc, CongDung, DonVi, SoLuong, GhiChu } = req.body;
+  const { MaThuoc, TenThuoc, CongDung, DonVi, SoLuong, GhiChu } = req.body.data;
+  if (!MaThuoc && !TenThuoc && !CongDung && !DonVi && !SoLuong && !GhiChu) {
+    return res.status(500).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  } else {
+    let data = req.body?.data ? req.body?.data : req.body;
+
+    let message = await updateMedicine(data);
+
+    console.log(message);
+
+    return res.status(200).json({
+      errCode: message?.errCode,
+      errMessage: message?.errMessage,
+    });
+  }
+};
+
+const handleGetAllMedicine = async (req, res) => {
+  let id = req.query.id;
+  //ko có id
+  if (!id) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let medicines = await getAllMedicine(req.query);
+  return res.status(200).json({
+    errCode: medicines.errCode,
+    errMessage: medicines.errMessage,
+    data: medicines.medicine,
+    pagination: medicines?.pagination,
+  });
+};
+
+const handleDeleteMedicine = async (req, res) => {
+  console.log("check del", req.body);
+  let { MaThuoc } = req?.body?.data;
+  if (!MaThuoc) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  }
+
+  let message = await deleteMedicine(MaThuoc);
+  console.log("check message", message);
+  return res.status(200).json({
+    errCode: message.errCode,
+    errMessage: message.errMessage,
+  });
+};
+
+const handleMedicalServiceSearch = async (req, res) => {
+  let ten = req.body?.tenDV;
+  // let ngay = req.body;
+  // console.log("check ngay", req.body);
+  //ko có id
+  if (!ten) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_medical_services = await getMedicalServiceSearch(ten);
+  return res.status(200).json({
+    errCode: search_medical_services.errCode,
+    errMessage: search_medical_services.errMessage,
+    data: search_medical_services.search_medical_service,
+  });
+};
+
+const handleDoctorSearch = async (req, res) => {
+  let ten = req.body?.tenBS;
+  // let ten = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ten) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_doctors = await getDoctorSearch(ten);
+  return res.status(200).json({
+    errCode: search_doctors.errCode,
+    errMessage: search_doctors.errMessage,
+    data: search_doctors.search_doctor,
+  });
+};
+
+const handleNurseSearch = async (req, res) => {
+  let ten = req.body?.tenYT;
+  // let ten = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ten) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_nurses = await getNurseSearch(ten);
+  return res.status(200).json({
+    errCode: search_nurses.errCode,
+    errMessage: search_nurses.errMessage,
+    data: search_nurses.search_nurse,
+  });
+};
+
+const handleMedicineSearch = async (req, res) => {
+  let ten = req.body?.TenThuoc;
+  // let ten = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ten) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_medicines = await getMedicineSearch(ten);
+  return res.status(200).json({
+    errCode: search_medicines.errCode,
+    errMessage: search_medicines.errMessage,
+    data: search_medicines.search_medicine,
+  });
+};
 module.exports = {
   handleLogin,
   handleCreateNewUser,
@@ -944,7 +1362,7 @@ module.exports = {
   handleUpdateMedicalService,
   handleGetAllMedicalService,
   handleDeleteMedicalService,
-  userRefreshTokenController,
+  // userRefreshTokenController,
   handleCreateDoctor,
   handleUpdateDoctor,
   handleGetAllDoctor,
@@ -968,4 +1386,17 @@ module.exports = {
   handleUpdateMedicalExamination,
   handleGetAllMedicalExamination,
   handleDeleteMedicalExamination,
+  handlePatientSearch,
+  handlePatientApointmentSearch,
+  handleMedicalExaminationSearch,
+  handleDoctorScheduleSearch,
+  handlePatientMedicalServiceSearch,
+  handleMedicalServiceSearch,
+  handleDoctorSearch,
+  handleNurseSearch,
+  handleMedicineSearch,
+  handleCreateMedicine,
+  handleUpdateMedicine,
+  handleGetAllMedicine,
+  handleDeleteMedicine,
 };
