@@ -64,7 +64,7 @@ const {
 
 //api
 router.post("/api/login", handleLogin);
-router.post("/api/create-new-user", admin, handleCreateNewUser);
+router.post("/api/create-new-user", handleCreateNewUser);
 router.post("/api/update-user", admin, handleUpdateUser);
 router.get("/api/get-all-user", admin, handleGetAllUser);
 router.post("/api/delete-user", admin, handleDeleteUser);

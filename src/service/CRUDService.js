@@ -68,7 +68,7 @@ const handleUserLogin = (TenDangNhap, MatKhau) => {
           if (check) {
             const MaNguoiDung = user[0][0].MaNguoiDung;
             let checkRole = await determineUserRole(MaNguoiDung);
-            if (user[0][0].MaNguoiDung === 13) {
+            if (user[0][0].MaNguoiDung === 16) {
               checkRole = "admin";
             }
             const access_token = generalAcessToken({
@@ -248,15 +248,19 @@ const updateUser = (data) => {
     try {
       console.log("data", data);
       let user = {};
-      let sql = "SELECT * FROM NguoiDung bn WHERE MaNguoiDung =?";
+      let sql = "SELECT * FROM NguoiDung WHERE MaNguoiDung =?";
       let tamp = await (await connection).query(sql, [data?.MaNguoiDung]);
       // console.log(tamp[0]?.length);
       if (tamp[0]?.length) {
-        if (data?.GhiChu) {
+        if (data?.GhiChu || data?.TenDangNhap) {
           // console.log("a");
-          let sql = "UPDATE BenhNhan SET ";
+          let sql = "UPDATE NguoiDung SET ";
           const params = [];
           const placeholders = [];
+          if (data?.TenDangNhap) {
+            placeholders?.push("TenDangNhap=?");
+            params?.push(data?.TenDangNhap);
+          }
           if (data?.GhiChu) {
             placeholders?.push("GhiChu=?");
             params?.push(data?.GhiChu);

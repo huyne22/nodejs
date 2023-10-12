@@ -108,19 +108,27 @@ const handleCreateNewUser = async (req, res) => {
 
 let handleDeleteUser = async (req, res) => {
   console.log("check body", req.body);
-  let userId = req.body?.MaNguoiDung;
+  let userId = req.body?.data?.MaNguoiDung;
+  console.log("userId", userId);
   if (!userId) {
     return res.status(200).json({
       errCode: 1,
       errMessage: "Thiếu tham số đầu vào!",
     });
   }
-  let message = await deleteUser(userId);
-  console.log("check message", message);
-  return res.status(200).json({
-    errCode: message.errCode,
-    errMessage: message.errMessage,
-  });
+  if (!(userId == 16)) {
+    let message = await deleteUser(userId);
+    console.log("check message", message);
+    return res.status(200).json({
+      errCode: message.errCode,
+      errMessage: message.errMessage,
+    });
+  } else {
+    return res.status(200).json({
+      errCode: 5,
+      errMessage: "Không thể xóa tài khoản admin!",
+    });
+  }
 };
 
 const handleUpdateUser = async (req, res) => {
