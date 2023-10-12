@@ -1,4 +1,5 @@
 const { query } = require("express");
+require("dotenv").config();
 const connection = require("../config/database");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken"); // Đảm bảo bạn import jwt từ thư viện jwt
@@ -8,48 +9,44 @@ const salt = bcrypt.genSaltSync(10);
 
 const generalAcessToken = (data) => {
   const access_token = jwt.sign(data, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: "20s",
+    expiresIn: "1d",
   });
   return access_token;
 };
 
 const generalRefreshToken = (data) => {
-  const access_token = jwt.sign(data, process.env.REFRESH_TOKEN_SECRET, {
+  const refresh_token = jwt.sign(data, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: "365d",
   });
-  return access_token;
+  return refresh_token;
 };
 
-// const refreshTokenService = (token) => {
-//   return new Promise((resolve, reject) => {
-//     try {
-//       jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, function (err, user) {
-//         if (err) {
-//           resolve(404).json({
-//             message: "The user is not authemtication",
-//           });
-//         }
-//         if (user) {
-//           const newAcessToken = generalAcessToken({
-//             isAdmin: user.isAdmin,
-//             _id: user._id,
-//           });
-//           resolve({
-//             status: "OK",
-//             access_token: newAcessToken,
-//           });
-//         } else {
-//           resolve({
-//             message: "The user is not authemtication",
-//           });
-//         }
-//       });
-//     } catch (error) {
-//       reject(error);
-//     }
-//   });
-// };
-//api
+const determineUserRole = async (MaNguoiDung) => {
+  try {
+    const [rows, fields] = await (
+      await connection
+    ).query("SELECT * FROM BacSi WHERE MaNguoiDung = ?", [MaNguoiDung]);
+    if (rows.length > 0) {
+      console.log("doctor");
+      return "doctor";
+    }
+
+    const [nurseRows, nurseFields] = await (
+      await connection
+    ).query("SELECT * FROM YTa WHERE MaNguoiDung = ?", [MaNguoiDung]);
+    if (nurseRows.length > 0) {
+      console.log("nurse");
+      return "nurse";
+    }
+    console.log("ra", rows);
+    // Không tìm thấy người dùng trong cả hai vai trò
+    console.log("user");
+    return "user";
+  } catch (error) {
+    console.error("Error determining user role:", error);
+  }
+};
+
 //xử lí khi người dùng đăng nhập
 const handleUserLogin = (TenDangNhap, MatKhau) => {
   return new Promise(async (resolve, reject) => {
@@ -64,20 +61,25 @@ const handleUserLogin = (TenDangNhap, MatKhau) => {
         let user = await (await connection).query(sql, [TenDangNhap]);
         //lấy mk băm từ database ra
         let dbMatKhau = user[0][0].MatKhau;
-
         if (user) {
-          console.log(dbMatKhau);
+          // console.log(dbMatKhau);
           //so sánh 2 mật khẩu
           let check = await bcrypt.compareSync(MatKhau, dbMatKhau);
           if (check) {
+            const MaNguoiDung = user[0][0].MaNguoiDung;
+            let checkRole = await determineUserRole(MaNguoiDung);
+            if (user[0][0].MaNguoiDung === 13) {
+              checkRole = "admin";
+            }
             const access_token = generalAcessToken({
-              isAdmin: user[0].isAdmin,
-              _id: user[0]._id,
+              isRole: checkRole,
+              MaNguoiDung: user[0][0].MaNguoiDung,
             });
             const refresh_token = generalRefreshToken({
-              isAdmin: user[0].isAdmin,
-              _id: user[0]._id,
+              isRole: checkRole,
+              MaNguoiDung: user[0][0].MaNguoiDung,
             });
+
             userData.errCode = 0;
             userData.errMessage = "OK. Chào mừng admin";
             userData.user = user[0];
@@ -104,51 +106,6 @@ const handleUserLogin = (TenDangNhap, MatKhau) => {
     }
   });
 };
-// const handleUserLogin = (TenDangNhap, MatKhau) => {
-//   return new Promise(async (resolve, reject) => {
-//     try {
-//       let userData = {};
-
-//       let isExist = await checkUserEmail(TenDangNhap);
-
-//       if (isExist) {
-//         const sql = "SELECT * FROM NguoiDung WHERE TenDangNhap = ?";
-//         let user = await (await connection).query(sql, [TenDangNhap]);
-
-//         // Kiểm tra người dùng và mật khẩu
-//         if (user.length > 0 && bcrypt.compareSync(MatKhau, user[0].MatKhau)) {
-//           const access_token = generalAcessToken({
-//             isAdmin: user[0].isAdmin,
-//             _id: user[0]._id,
-//           });
-
-//           const refresh_token = generalRefreshToken({
-//             isAdmin: user[0].isAdmin,
-//             _id: user[0]._id,
-//           });
-
-//           userData.errCode = 0;
-//           userData.errMessage = "OK. Chào mừng admin";
-//           userData.user = user[0];
-//           userData.data = {
-//             access_token,
-//             refresh_token,
-//           };
-//         } else {
-//           userData.errCode = 3;
-//           userData.errMessage = "Sai mật khẩu";
-//         }
-//       } else {
-//         userData.errCode = 2;
-//         userData.errMessage = `Không tìm thấy người dùng`;
-//       }
-
-//       resolve(userData);
-//     } catch (e) {
-//       reject(e);
-//     }
-//   });
-// };
 
 //check email
 let checkUserEmail = (TenDangNhap) => {
@@ -210,6 +167,60 @@ let createNewUser = (TenDangNhap, MatKhau) => {
   });
 };
 
+const getAllUser = (data) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      //xét 2 Th cho nó
+      let id = data?.id;
+      let limit = data?.limit ? data?.limit : 4;
+      let page = data?.page ? data?.page : 1;
+      let user = "";
+      if (id === "ALL") {
+        let offset = (page - 1) * limit;
+        let sql = "SELECT * FROM NguoiDung bn limit ? offset ? ";
+        let tampAllUser = await (
+          await connection
+        ).query(sql, [+limit, +offset]);
+        user = tampAllUser[0];
+        let totalPageData = await (
+          await connection
+        ).query(`SELECT COUNT(*) as count from NguoiDung`);
+        let totalpage = Math.ceil(+totalPageData[0][0]?.count / limit);
+        let total = totalPageData[0][0].count;
+        resolve({
+          errCode: 0,
+          errMessage: "Thông tin của tất cả người dùng là!",
+          user,
+          pagination: {
+            page: +page,
+            limit: +limit,
+            totalpage,
+            total,
+          },
+        });
+      }
+
+      if (id && Number.isSafeInteger(Number(id))) {
+        let sql = "SELECT * FROM NguoiDung bn WHERE MaNguoiDung = ?";
+        let tampAllUser = await (await connection).query(sql, [id]);
+        user = tampAllUser[0];
+        resolve({
+          errCode: 0,
+          errMessage: "Thông tin của người dùng trên là!",
+          user,
+        });
+      } else {
+        resolve({
+          errCode: 3,
+          errMessage: "Mã người dùng không hợp lệ!",
+        });
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
 const deleteUser = async (userId) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -224,6 +235,49 @@ const deleteUser = async (userId) => {
         (user.errCode = 0), (user.errMessage = "Xóa người dùng thành công!");
       } else {
         (user.errCode = 1), (user.errMessage = "Không tìm thấy người dùng!");
+      }
+      resolve(user);
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const updateUser = (data) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      console.log("data", data);
+      let user = {};
+      let sql = "SELECT * FROM NguoiDung bn WHERE MaNguoiDung =?";
+      let tamp = await (await connection).query(sql, [data?.MaNguoiDung]);
+      // console.log(tamp[0]?.length);
+      if (tamp[0]?.length) {
+        if (data?.GhiChu) {
+          // console.log("a");
+          let sql = "UPDATE BenhNhan SET ";
+          const params = [];
+          const placeholders = [];
+          if (data?.GhiChu) {
+            placeholders?.push("GhiChu=?");
+            params?.push(data?.GhiChu);
+          }
+          // console.log("check params", params);
+          // console.log("check placeholders", placeholders);
+
+          // Xây dựng câu lệnh SQL
+          sql += placeholders?.join(", ") + " WHERE MaNguoiDung=?";
+          params?.push(data?.MaNguoiDung);
+          // console.log("check sql", sql);
+          // console.log("check params", params);
+          await (await connection)?.query(sql, params);
+          (user.errCode = 0),
+            (user.errMessage = "Cập nhật thông tin người dùng thành công!");
+        } else {
+          (user.errCode = 3),
+            (user.errMessage = "Không có trường dữ liệu nào được cập nhật!");
+        }
+      } else {
+        (user.errCode = 2), (user.errMessage = "Không tim thấy MaNguoiDung!");
       }
       resolve(user);
     } catch (e) {
@@ -1181,6 +1235,167 @@ const deleteDoctorSchedule = async (Ngay, Buoi, MaBS) => {
   });
 };
 
+const checkRecordExists4 = async (Ngay, Buoi, MaYTa) => {
+  try {
+    const sql = `
+        SELECT COUNT(*) AS count
+        FROM LichTrucYTa
+        WHERE Ngay = ? AND Buoi = ? AND MaYTa = ?
+      `;
+    const [rows] = await (await connection).query(sql, [Ngay, Buoi, MaYTa]);
+    const count = rows[0].count;
+    return count > 0;
+  } catch (error) {
+    console.error("Error checking if the record exists:", error.message);
+    throw error;
+  }
+};
+
+const createNewNurseSchedule = (Ngay, Buoi, MaYTa, SoLuongBNToiDa, GhiChu) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let user = {};
+      const recordExists = await checkRecordExists4(Ngay, Buoi, MaYTa);
+      if (!recordExists) {
+        const sql = `
+          INSERT INTO LichTrucYTa (Ngay, Buoi, MaYTa, SoLuongBNToiDa, GhiChu)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+        await (
+          await connection
+        ).query(sql, [Ngay, Buoi, MaYTa, SoLuongBNToiDa, GhiChu]);
+        user.errCode = 0;
+        user.errMessage = "OK! Tạo lịch trực thành công!";
+      } else {
+        user.errCode = 3;
+        user.errMessage = "Đã tồn tại Lịch trực";
+      }
+      resolve(user);
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const updateNurseSchedule = (data) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      console.log("data", data);
+      let user = {};
+      let sql =
+        "SELECT * FROM LichTrucYTa WHERE Ngay =? AND Buoi =? AND MaYTa =?";
+      let tamp = await (
+        await connection
+      ).query(sql, [data?.Ngay, data?.Buoi, data?.MaYTa]);
+      console.log(tamp[0][0]);
+      if (tamp[0]?.length) {
+        if (data?.SoLuongBNToiDa || data?.GhiChu) {
+          // console.log("a");
+          let sql = "UPDATE LichTrucYTa SET ";
+          const params = [];
+          const placeholders = [];
+
+          if (data?.SoLuongBNToiDa) {
+            placeholders?.push("SoLuongBNToiDa=?");
+            params?.push(data?.SoLuongBNToiDa);
+          }
+          if (data?.GhiChu) {
+            placeholders?.push("GhiChu=?");
+            params?.push(data?.GhiChu);
+          }
+
+          // console.log("check params", params);
+          // console.log("check placeholders", placeholders);
+
+          // Xây dựng câu lệnh SQL
+          sql +=
+            placeholders?.join(", ") + " WHERE Ngay=? AND Buoi =? AND MaYTa =?";
+          params?.push(data?.Ngay, data?.Buoi, data?.MaYTa);
+          // console.log("check sql", sql);
+          // console.log("check params", params);
+          await (await connection)?.query(sql, params);
+          (user.errCode = 0),
+            (user.errMessage = "Cập nhật thông tin lịch trực y tá thành công!");
+        } else {
+          (user.errCode = 3),
+            (user.errMessage = "Không có trường dữ liệu nào được cập nhật!");
+        }
+      } else {
+        (user.errCode = 2), (user.errMessage = "Không tim thấy lịch trực!");
+      }
+      resolve(user);
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const getAllNurseSchedule = (data) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      //xét 2 Th cho nó
+      let id = data?.id;
+      let limit = data?.limit ? data?.limit : 4;
+      let page = data?.page ? data?.page : 1;
+      let schedule = "";
+      if (id === "ALL") {
+        let offset = (page - 1) * limit;
+        let sql = "SELECT * FROM LichTrucYTa limit ? offset ? ";
+        let tampAllSchedule = await (
+          await connection
+        ).query(sql, [+limit, +offset]);
+        schedule = tampAllSchedule[0];
+        let totalPageData = await (
+          await connection
+        ).query(`SELECT COUNT(*) as count from LichTrucYTa`);
+        let totalpage = Math.ceil(+totalPageData[0][0]?.count / limit);
+        let total = totalPageData[0][0].count;
+        resolve({
+          errCode: 0,
+          errMessage: "Thông tin của tất cả lịch trực là!",
+          schedule,
+          pagination: {
+            page: +page,
+            limit: +limit,
+            totalpage,
+            total,
+          },
+        });
+      } else {
+        resolve({
+          errCode: 2,
+          errMessage: "",
+        });
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
+const deleteNurseSchedule = async (Ngay, Buoi, MaYTa) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let user = {};
+      //tìm bệnh nhân
+      let sql =
+        "SELECT * FROM LichTrucYTa WHERE Ngay =? AND Buoi =? AND MaYTa =?";
+      let schedule = await (await connection).query(sql, [Ngay, Buoi, MaYTa]);
+      if (schedule[0]?.length) {
+        //xóa ở đây
+        let sql1 =
+          "DELETE FROM LichTrucYTa WHERE Ngay = ? AND Buoi =? AND MaYTa =?";
+        await (await connection).query(sql1, [Ngay, Buoi, MaYTa]);
+        (user.errCode = 0), (user.errMessage = "Xóa buổi trực thành công!");
+      } else {
+        (user.errCode = 1), (user.errMessage = "Không tìm thấy buổi trực!");
+      }
+      resolve(user);
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
 const checkRecordExists2 = async (Ngay, Buoi, MaBS, MaBN) => {
   try {
     const sql = `
@@ -1917,6 +2132,35 @@ const getDoctorSearch = (ten) => {
   });
 };
 
+const getUserSearch = (ten) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      //xét 2 Th cho nó
+
+      let search_user = "";
+      if (ten !== undefined) {
+        let sql = `SELECT * FROM NguoiDung WHERE TenDangNhap LIKE '%${ten}%' `;
+        let tampName = await (await connection).query(sql);
+
+        search_user = tampName[0];
+        // console.log("tamp", tampSdt);
+        resolve({
+          errCode: 0,
+          errMessage: "Thông tin của người dùng trên là!",
+          search_user,
+        });
+      } else {
+        resolve({
+          errCode: 2,
+          errMessage: "",
+        });
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
 const getNurseSearch = (ten) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -2151,6 +2395,8 @@ module.exports = {
   handleUserLogin,
   createNewUser,
   deleteUser,
+  getAllUser,
+  updateUser,
   createNewPatient,
   updatePatient,
   getAllPatient,
@@ -2159,7 +2405,6 @@ module.exports = {
   updateMedicalService,
   getAllMedicalService,
   deleteMedicalService,
-  // refreshTokenService,
   createNewDoctor,
   updateDoctor,
   getAllDoctor,
@@ -2172,6 +2417,10 @@ module.exports = {
   updateDoctorSchedule,
   getAllDoctorSchedule,
   deleteDoctorSchedule,
+  createNewNurseSchedule,
+  updateNurseSchedule,
+  getAllNurseSchedule,
+  deleteNurseSchedule,
   createNewPatientAppointment,
   getAllPatientAppointment,
   deletePatientAppointment,
@@ -2190,6 +2439,7 @@ module.exports = {
   getPatientMedicalServiceSearch,
   getMedicalServiceSearch,
   getDoctorSearch,
+  getUserSearch,
   getNurseSearch,
   getMedicineSearch,
   createNewMedicine,

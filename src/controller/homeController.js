@@ -3,6 +3,8 @@ const {
   handleUserLogin,
   createNewUser,
   createNewPatient,
+  getAllUser,
+  updateUser,
   updatePatient,
   getAllPatient,
   deletePatient,
@@ -10,7 +12,6 @@ const {
   updateMedicalService,
   getAllMedicalService,
   deleteMedicalService,
-  // refreshTokenService,
   createNewDoctor,
   updateDoctor,
   getAllDoctor,
@@ -23,6 +24,10 @@ const {
   updateDoctorSchedule,
   getAllDoctorSchedule,
   deleteDoctorSchedule,
+  createNewNurseSchedule,
+  updateNurseSchedule,
+  getAllNurseSchedule,
+  deleteNurseSchedule,
   createNewPatientAppointment,
   getAllPatientAppointment,
   deletePatientAppointment,
@@ -42,6 +47,7 @@ const {
   getPatientMedicalServiceSearch,
   getMedicalServiceSearch,
   getDoctorSearch,
+  getUserSearch,
   getNurseSearch,
   getMedicineSearch,
   createNewMedicine,
@@ -70,7 +76,11 @@ const handleLogin = async (req, res) => {
   //check email tồn tại
   //so sánh password
   let access_token = userData?.data?.access_token;
-  res.cookie("access_token", access_token, { httpOnly: true });
+  res.cookie("access_token", access_token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+  });
   return res.status(200).json({
     errCode: userData.errCode,
     errMessage: userData.errMessage,
@@ -113,6 +123,47 @@ let handleDeleteUser = async (req, res) => {
   });
 };
 
+const handleUpdateUser = async (req, res) => {
+  console.log("check body", req.body.data);
+  console.log("check body", req.body);
+  if (!req.body?.data?.MaNguoiDung && !req.body?.MaNguoiDung) {
+    return res.status(500).json({
+      errCode: 1,
+      errMessage: "Thiếu mã người dùng!",
+    });
+  } else {
+    let data = req.body.data ? req.body.data : req.body;
+    let message = await updateUser(data);
+
+    console.log(message);
+
+    return res.status(200).json({
+      errCode: message?.errCode,
+      errMessage: message?.errMessage,
+    });
+  }
+};
+let handleGetAllUser = async (req, res) => {
+  let id = req.query.id;
+  console.log("check req.query", req.query);
+  //ko có id
+  if (!id) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  //có id
+  let users = await getAllUser(req.query);
+
+  return res.status(200).json({
+    errCode: users.errCode,
+    errMessage: users.errMessage,
+    data: users.user,
+    pagination: users?.pagination,
+  });
+};
 const handleCreateNewPatient = async (req, res) => {
   const { MaBN, HoBN, TenBN, SoDT, Email, NgaySinh, GioiTinh, DiaChi, GhiChu } =
     req.body;
@@ -636,6 +687,107 @@ const handleDeleteDoctorSchedule = async (req, res) => {
   }
 
   let message = await deleteDoctorSchedule(Ngay, Buoi, MaBS);
+  console.log("check message", message);
+  return res.status(200).json({
+    errCode: message.errCode,
+    errMessage: message.errMessage,
+  });
+};
+
+const handleCreateNurseSchedule = async (req, res) => {
+  const { Ngay, Buoi, MaYTa, SoLuongBNToiDa, GhiChu } = req.body;
+  if (!Ngay || !Buoi || !MaYTa || !SoLuongBNToiDa || !GhiChu) {
+    return res.status(500).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  } else {
+    let message = await createNewNurseSchedule(
+      Ngay,
+      Buoi,
+      MaYTa,
+      SoLuongBNToiDa,
+      GhiChu
+    );
+    return res.status(200).json({
+      errCode: message?.errCode,
+      errMessage: message?.errMessage,
+    });
+  }
+};
+
+const handleUpdateNurseSchedule = async (req, res) => {
+  console.log("check", req.body);
+  console.log("check", req.body?.data);
+  let Ngay = req.body.data.Ngay ? req.body.data.Ngay : req.body.Ngay;
+  let Buoi = req.body.data.Buoi ? req.body.data.Buoi : req.body.Buoi;
+  let MaYTa = req.body.data.MaYTa ? req.body.data.MaYTa : req.body.MaYTa;
+  if (!Ngay && !Buoi && !MaYTa) {
+    return res.status(500).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  } else {
+    let data = req.body?.data ? req.body?.data : req.body;
+
+    let message = await updateNurseSchedule(data);
+
+    console.log(message);
+
+    return res.status(200).json({
+      errCode: message?.errCode,
+      errMessage: message?.errMessage,
+    });
+  }
+};
+
+const handleGetAllNurseSchedule = async (req, res) => {
+  let id = req.query.id;
+  //ko có id
+  if (!id) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let schedules = await getAllNurseSchedule(req.query);
+
+  if (schedules && schedules.schedule && schedules.schedule.length > 0) {
+    for (let i = 0; i < schedules.schedule.length; i++) {
+      let ngayGio = new Date(schedules.schedule[i].Ngay);
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      schedules.schedule[i].Ngay = ngayMoi;
+    }
+  }
+  //có id
+
+  return res.status(200).json({
+    errCode: schedules.errCode,
+    errMessage: schedules.errMessage,
+    data: schedules.schedule,
+    pagination: schedules?.pagination,
+  });
+};
+
+const handleDeleteNurseSchedule = async (req, res) => {
+  console.log("check del", req.body);
+  let { Ngay, Buoi, MaYTa } = req.body;
+  if (!Ngay || !Buoi || !MaYTa) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào!",
+    });
+  }
+
+  let message = await deleteNurseSchedule(Ngay, Buoi, MaYTa);
   console.log("check message", message);
   return res.status(200).json({
     errCode: message.errCode,
@@ -1311,6 +1463,26 @@ const handleDoctorSearch = async (req, res) => {
   });
 };
 
+const handleUserSearch = async (req, res) => {
+  let ten = req.body?.tenDangNhap;
+  // let ten = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ten) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_users = await getUserSearch(ten);
+  return res.status(200).json({
+    errCode: search_users.errCode,
+    errMessage: search_users.errMessage,
+    data: search_users.search_user,
+  });
+};
+
 const handleNurseSearch = async (req, res) => {
   let ten = req.body?.tenYT;
   // let ten = req.body;
@@ -1354,6 +1526,8 @@ module.exports = {
   handleLogin,
   handleCreateNewUser,
   handleDeleteUser,
+  handleGetAllUser,
+  handleUpdateUser,
   handleCreateNewPatient,
   handleUpdatePatient,
   handleGetAllPatient,
@@ -1362,7 +1536,6 @@ module.exports = {
   handleUpdateMedicalService,
   handleGetAllMedicalService,
   handleDeleteMedicalService,
-  // userRefreshTokenController,
   handleCreateDoctor,
   handleUpdateDoctor,
   handleGetAllDoctor,
@@ -1375,6 +1548,10 @@ module.exports = {
   handleUpdateDoctorSchedule,
   handleGetAllDoctorSchedule,
   handleDeleteDoctorSchedule,
+  handleCreateNurseSchedule,
+  handleUpdateNurseSchedule,
+  handleGetAllNurseSchedule,
+  handleDeleteNurseSchedule,
   handleCreatePatientAppointment,
   handleGetAllPatientAppointment,
   handleDeletePatientAppointment,
@@ -1393,6 +1570,7 @@ module.exports = {
   handlePatientMedicalServiceSearch,
   handleMedicalServiceSearch,
   handleDoctorSearch,
+  handleUserSearch,
   handleNurseSearch,
   handleMedicineSearch,
   handleCreateMedicine,

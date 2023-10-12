@@ -1,31 +1,39 @@
+const { render } = require("ejs");
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-const authMiddleware = (req, res, next) => {
-  // Lấy token từ header và bỏ phần "Bearer "
-  // const token1 = req.headers["Authorization"];
-  const token2 = req.headers.cookie;
-  const token = token2?.split(" ")[1];
+const authMiddleware = (requiredRole) => (req, res, next) => {
+  const token = req.cookies.access_token;
+  console.log("check", req.cookies);
   // Kiểm tra token có tồn tại không
-  console.log("token", req.headers.access_token);
   if (!token) {
-    return res.status(404).json({
-      message: "Token is valid",
+    return res.status(401).json({
+      message: "Invalid token",
     });
   }
+
   // Xác thực token sử dụng secret key
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, user) {
-    console.log("err", err);
     if (err) {
-      return res.status(404).json({
-        message: "The user is not authemtication1",
+      console.error("JWT verification error:", err);
+      return res.status(403).json({
+        message: "Invalid token",
       });
     }
+
     // Kiểm tra xem user có quyền admin hay không
-    if (user.isAdmin) {
-      next(); // Cho phép tiếp tục xử lý request
+    if (user.isRole) {
+      const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      console.log("check", decodedToken.isRole);
+      if (requiredRole.includes(decodedToken.isRole)) {
+        req.user = decodedToken;
+        next(); // Cho phép tiếp tục xử lý request
+      } else {
+        return res.status(403).json({ message: "Permission denied" });
+      }
     } else {
-      return res.status(404).json({
-        message: "The user is not authemtication2",
+      return res.status(403).json({
+        message: "User is not authorized",
       });
     }
   });
