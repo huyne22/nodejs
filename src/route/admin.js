@@ -50,6 +50,7 @@ const {
   handlePatientApointmentSearch,
   handleMedicalExaminationSearch,
   handleDoctorScheduleSearch,
+  handleNurseScheduleSearch,
   handlePatientMedicalServiceSearch,
   handleMedicalServiceSearch,
   handleDoctorSearch,
@@ -139,7 +140,7 @@ router.post(
 
 router.post(
   "/api/create-medical-examination",
-  admin,
+  doctor,
   handleCreateMedicalExamination
 );
 router.post(
@@ -173,6 +174,7 @@ router.post(
   handleMedicalExaminationSearch
 );
 router.post("/api/get-doctor-schedule-search", all, handleDoctorScheduleSearch);
+router.post("/api/get-nurse-schedule-search", all, handleNurseScheduleSearch);
 router.post(
   "/api/get-patient-medical-service-search",
   all,

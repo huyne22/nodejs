@@ -44,6 +44,7 @@ const {
   getPatientApointmentSearch,
   getMedicalExaminationSearch,
   getDoctorScheduleSearch,
+  getNurseScheduleSearch,
   getPatientMedicalServiceSearch,
   getMedicalServiceSearch,
   getDoctorSearch,
@@ -84,6 +85,8 @@ const handleLogin = async (req, res) => {
   return res.status(200).json({
     errCode: userData.errCode,
     errMessage: userData.errMessage,
+    id: userData?.id ? userData?.id : {},
+    role: userData?.role ? userData?.role : {},
     data: userData?.user ? userData?.user : {},
     token: userData?.data ? userData?.data : {},
   });
@@ -704,6 +707,7 @@ const handleDeleteDoctorSchedule = async (req, res) => {
 
 const handleCreateNurseSchedule = async (req, res) => {
   const { Ngay, Buoi, MaYTa, SoLuongBNToiDa, GhiChu } = req.body;
+  console.log(req.body);
   if (!Ngay || !Buoi || !MaYTa || !SoLuongBNToiDa || !GhiChu) {
     return res.status(500).json({
       errCode: 1,
@@ -1300,6 +1304,49 @@ const handleDoctorScheduleSearch = async (req, res) => {
   });
 };
 
+const handleNurseScheduleSearch = async (req, res) => {
+  let ngay = req.body.ngay;
+  // let ngay = req.body;
+  console.log("check ngay", req.body);
+  //ko có id
+  if (!ngay) {
+    return res.status(200).json({
+      errCode: 1,
+      errMessage: "Thiếu tham số đầu vào",
+      users: [],
+    });
+  }
+  let search_nurse_schedules = await getNurseScheduleSearch(ngay);
+  if (
+    search_nurse_schedules &&
+    search_nurse_schedules.search_nurse_schedule &&
+    search_nurse_schedules.search_nurse_schedule.length > 0
+  ) {
+    for (
+      let i = 0;
+      i < search_nurse_schedules.search_nurse_schedule.length;
+      i++
+    ) {
+      let ngayGio = new Date(
+        search_nurse_schedules.search_nurse_schedule[i].Ngay
+      );
+
+      // Tăng thêm 1 ngày
+      ngayGio.setDate(ngayGio.getDate() + 1);
+
+      // Định dạng lại ngày thành chuỗi ngày tháng (ví dụ: "YYYY-MM-DD")
+      let ngayMoi = ngayGio.toISOString().split("T")[0];
+
+      // Cập nhật Ngay thành ngày mới
+      search_nurse_schedules.search_nurse_schedule[i].Ngay = ngayMoi;
+    }
+  }
+  return res.status(200).json({
+    errCode: search_nurse_schedules.errCode,
+    errMessage: search_nurse_schedules.errMessage,
+    data: search_nurse_schedules.search_nurse_schedule,
+  });
+};
 const handlePatientMedicalServiceSearch = async (req, res) => {
   let ngay = req.body.ngay;
   // let ngay = req.body;
@@ -1575,6 +1622,7 @@ module.exports = {
   handlePatientApointmentSearch,
   handleMedicalExaminationSearch,
   handleDoctorScheduleSearch,
+  handleNurseScheduleSearch,
   handlePatientMedicalServiceSearch,
   handleMedicalServiceSearch,
   handleDoctorSearch,

@@ -79,10 +79,26 @@ const handleUserLogin = (TenDangNhap, MatKhau) => {
               isRole: checkRole,
               MaNguoiDung: user[0][0].MaNguoiDung,
             });
+            let role = {};
+            if (checkRole === "doctor") {
+              const sql1 = "SELECT * FROM BacSi WHERE MaNguoiDung = ?";
+              let tamp = await (await connection).query(sql1, [MaNguoiDung]);
+              role.id = tamp[0][0].MaBS;
+              role.name = "Doctor";
+            }
+            if (checkRole === "nurse") {
+              const sql2 = "SELECT * FROM YTa WHERE MaNguoiDung = ?";
+              let tamp = await (await connection).query(sql2, [MaNguoiDung]);
+
+              role.id = tamp[0][0].MaYT;
+              role.name = "Nurse";
+            }
 
             userData.errCode = 0;
             userData.errMessage = "OK. Chào mừng admin";
             userData.user = user[0];
+            userData.id = role.id;
+            userData.role = role.name;
             userData.data = {
               access_token,
               refresh_token,
@@ -663,10 +679,16 @@ const createNewDoctor = (
       let user = {};
       let sql = `SELECT MaBS FROM BacSi WHERE MaBS = ?`;
       let sql2 = `SELECT MaNguoiDung FROM NguoiDung WHERE MaNguoiDung = ?`;
+      let sql3 = "SELECT * FROM YTa WHERE MaNguoiDung = ?";
+      let sql4 = "SELECT * FROM BacSi WHERE MaNguoiDung = ?";
+      let checkNurse = await (await connection).query(sql3, [MaNguoiDung]);
+      let checkDoctor = await (await connection).query(sql4, [MaNguoiDung]);
       let doctor = await (await connection).query(sql, [MaBS]);
       let check = await (await connection).query(sql2, [MaNguoiDung]);
       if (check[0].length === 0) {
         (user.errCode = 3), (user.errMessage = "Mã người dùng chưa tạo!");
+      } else if (checkDoctor[0][0]?.MaBS || checkNurse[0][0]?.MaYT) {
+        (user.errCode = 4), (user.errMessage = "Mã người dùng đã tồn tại!");
       } else {
         if (doctor[0]?.length == 0) {
           const sql1 =
@@ -685,6 +707,7 @@ const createNewDoctor = (
             MaNguoiDung,
             GhiChu,
           ]);
+
           user.errCode = 0;
           user.errMessage = "OK! Tạo bác sĩ thành công!";
         } else {
@@ -878,10 +901,16 @@ const createNewNurse = (
       let user = {};
       let sql = `SELECT MaYT FROM YTa WHERE MaYT = ?`;
       let sql2 = `SELECT MaNguoiDung FROM NguoiDung WHERE MaNguoiDung = ?`;
+      let sql3 = "SELECT * FROM YTa WHERE MaNguoiDung = ?";
+      let sql4 = "SELECT * FROM BacSi WHERE MaNguoiDung = ?";
+      let checkNurse = await (await connection).query(sql3, [MaNguoiDung]);
+      let checkDoctor = await (await connection).query(sql4, [MaNguoiDung]);
       let nurse = await (await connection).query(sql, [MaYT]);
       let check = await (await connection).query(sql2, [MaNguoiDung]);
       if (check[0].length === 0) {
         (user.errCode = 3), (user.errMessage = "Mã người dùng chưa tạo!");
+      } else if (checkDoctor[0][0]?.MaBS || checkNurse[0][0]?.MaYT) {
+        (user.errCode = 4), (user.errMessage = "Mã người dùng đã tồn tại!");
       } else {
         if (nurse[0]?.length == 0) {
           const sql1 =
@@ -2049,6 +2078,35 @@ const getDoctorScheduleSearch = (ngay) => {
   });
 };
 
+const getNurseScheduleSearch = (ngay) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      //xét 2 Th cho nó
+
+      let search_nurse_schedule = "";
+      if (ngay !== undefined) {
+        let sql = `SELECT * FROM LichTrucYTa WHERE Ngay = ? `;
+        let tampNgay = await (await connection).query(sql, [ngay.Ngay]);
+
+        search_nurse_schedule = tampNgay[0];
+        // console.log("tamp", tampSdt);
+        resolve({
+          errCode: 0,
+          errMessage: "Thông tin của ngày trên là!",
+          search_nurse_schedule,
+        });
+      } else {
+        resolve({
+          errCode: 2,
+          errMessage: "",
+        });
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+};
+
 const getPatientMedicalServiceSearch = (ngay) => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -2440,6 +2498,7 @@ module.exports = {
   getPatientApointmentSearch,
   getMedicalExaminationSearch,
   getDoctorScheduleSearch,
+  getNurseScheduleSearch,
   getPatientMedicalServiceSearch,
   getMedicalServiceSearch,
   getDoctorSearch,
