@@ -33,3 +33,4 @@ Refresh lại database sẽ có xuất hiện các table.
 
 Sau này, mỗi lần cần sử dụng database MySQL, đảm bảo rằng 'đã chạy docker trước'.
 Không cần 'update docker' để hạn chế mất dữ liệu
+Kiểu tháng/ngày/năm được sử dụng trong hệ thống
