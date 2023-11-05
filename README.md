@@ -23,13 +23,13 @@ Refresh lại database sẽ có xuất hiện các table.
 1 số tài khoản hiện có
 
 - tài khoản quản trị viên là admin
-- mật khẩu là 123456
+- mật khẩu là 123
 
   - tài khoản bác sĩ là ad1
-  - mật khẩu là 123456
+  - mật khẩu là 123
 
   - tài khoản y tá là ad7
-  - mật khẩu là 123456
+  - mật khẩu là 123
 
 Sau này, mỗi lần cần sử dụng database MySQL, đảm bảo rằng 'đã chạy docker trước'.
 Không cần 'update docker' để hạn chế mất dữ liệu
