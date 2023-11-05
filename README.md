@@ -36,3 +36,6 @@ Không cần 'update docker' để hạn chế mất dữ liệu
 Kiểu tháng/ngày/năm được sử dụng trong hệ thống
 Chạy project tên nodejs dùng lệnh npm run dev
 Chạy project tên app-react dùng lệnh npm start
+
+Email liên hệ hỗ trợ: 2051012035huy@ou.edu.vn
+Số điện thoại: 0367304511
